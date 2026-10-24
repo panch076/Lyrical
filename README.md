@@ -1,4 +1,5 @@
 # Lyrical
+# slop slop slop idc— your discretion
 
 A menu-bar app for macOS 26 that shows synced lyrics for whatever is playing, styled with Liquid Glass.
 
