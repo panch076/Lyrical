@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key><string>app.lyrical.Lyrical</string>
+    <key>CFBundleName</key><string>Lyrical</string>
+    <key>CFBundleDisplayName</key><string>Lyrical</string>
+    <key>CFBundleExecutable</key><string>Lyrical</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
+    <key>CFBundleShortVersionString</key><string>1.0</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>LSMinimumSystemVersion</key><string>26.0</string>
+    <key>LSUIElement</key><true/>
+    <key>LSApplicationCategoryType</key><string>public.app-category.music</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>NSPrincipalClass</key><string>NSApplication</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Lyrical reads the current song and playback position from Music and Spotify to show perfectly synced lyrics.</string>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>Lyrical listens to system audio to identify songs playing in any app.</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>Lyrical captures system audio (never your screen) to identify songs playing in any app.</string>
+</dict>
+</plist>
