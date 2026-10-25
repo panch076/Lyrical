@@ -1,3 +1,4 @@
+import "@fontsource-variable/inter";
 import { icons } from "./icons";
 import { activeIndex, clearSungProgress, renderSungText, setSungProgress, sweepProgress } from "./lyrics";
 import { accent, extractPalette, loadImage, rgb } from "./palette";

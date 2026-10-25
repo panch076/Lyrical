@@ -105,23 +105,27 @@ fn media_command(state: tauri::State<AppState>, action: String, position: Option
     let _ = state.commands.lock().unwrap().send(command);
 }
 
+// Commands that create or destroy windows must be async. Synchronous commands
+// run on the main thread inside WebView2's message callback, and building a
+// webview there deadlocks on Windows, which froze the app on "Full Screen".
+
 #[tauri::command]
-fn show_fullscreen(app: AppHandle) {
+async fn show_fullscreen(app: AppHandle) {
     open_fullscreen(&app);
 }
 
 #[tauri::command]
-fn hide_fullscreen(app: AppHandle) {
+async fn hide_fullscreen(app: AppHandle) {
     close_fullscreen(&app);
 }
 
 #[tauri::command]
-fn set_floating_visible(app: AppHandle, visible: bool) {
+async fn set_floating_visible(app: AppHandle, visible: bool) {
     set_floating(&app, visible);
 }
 
 #[tauri::command]
-fn open_settings(app: AppHandle) {
+async fn open_settings(app: AppHandle) {
     open_settings_window(&app);
 }
 
@@ -220,7 +224,8 @@ fn apply_settings(app: &AppHandle, settings: &Settings) {
 fn apply_glass(window: &WebviewWindow, glass: &str) {
     use window_vibrancy::{apply_acrylic, clear_acrylic};
     if glass == "acrylic" {
-        let _ = apply_acrylic(window, Some((18, 18, 24, 110)));
+        // A light, slightly cool tint so the desktop shows through, like Liquid Glass.
+        let _ = apply_acrylic(window, Some((24, 24, 32, 64)));
         let _ = window.set_shadow(true);
         round_corners(window);
     } else {
@@ -233,11 +238,17 @@ fn apply_glass(window: &WebviewWindow, glass: &str) {
 fn apply_glass(_window: &WebviewWindow, _glass: &str) {}
 
 /// Asks Windows 11 to round the borderless window's corners like other windows.
+/// (A custom SetWindowRgn clip would allow a larger radius, but Windows then
+/// stops compositing the frame and paints a classic title bar over the box.)
 #[cfg(windows)]
 fn round_corners(window: &WebviewWindow) {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
     use windows::Win32::Foundation::HWND;
-    use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND};
+    use windows::Win32::Graphics::Dwm::{
+        DwmSetWindowAttribute, DWMWA_BORDER_COLOR, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND,
+    };
+    /// DWMWA_COLOR_NONE: no accent-coloured border; the page draws a glass rim instead.
+    const COLOR_NONE: u32 = 0xFFFF_FFFE;
     let Ok(handle) = window.window_handle() else { return };
     let RawWindowHandle::Win32(win32) = handle.as_raw() else { return };
     let hwnd = HWND(win32.hwnd.get() as *mut core::ffi::c_void);
@@ -248,6 +259,12 @@ fn round_corners(window: &WebviewWindow) {
             DWMWA_WINDOW_CORNER_PREFERENCE,
             &preference as *const _ as *const core::ffi::c_void,
             std::mem::size_of_val(&preference) as u32,
+        );
+        let _ = DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_BORDER_COLOR,
+            &COLOR_NONE as *const _ as *const core::ffi::c_void,
+            std::mem::size_of_val(&COLOR_NONE) as u32,
         );
     }
 }
@@ -385,11 +402,13 @@ fn spawn_poller(app: AppHandle, shared: Arc<Mutex<Shared>>, commands: mpsc::Rece
 
             let snapshot = backend.snapshot();
             let id = snapshot.as_ref().map(|s| s.track_id.clone());
+            // Record the new track before starting its lookups: they check it to
+            // drop stale results, and a cache hit can finish before we'd get here.
+            shared.lock().unwrap().now = snapshot.clone();
             if id != last_id {
                 last_id = id.clone();
                 on_track_change(&app, &shared, snapshot.clone(), backend.artwork());
             }
-            shared.lock().unwrap().now = snapshot.clone();
             let _ = app.emit("now-playing", &snapshot);
         }
     });

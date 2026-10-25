@@ -306,7 +306,7 @@ h2 {
   font-size: calc(var(--lyric-size) * var(--scale));
   font-weight: 700;
   line-height: 1.22;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.028em;
   overflow-wrap: anywhere;
 }
 

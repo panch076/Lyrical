@@ -20,6 +20,8 @@ Lyrics come from [LRCLIB](https://lrclib.net). Artwork comes from the player, or
 - **Windows:** Acrylic, the native frosted backdrop with rounded Windows 11 corners. Frosted, Clear and Album Tint styles are also available.
 - **Linux:** Frosted, Clear and Album Tint, drawn by the app itself. Linux desktops don't offer a standard blur-behind effect.
 
+The macOS app uses Apple's SF Pro, which can't be shipped on other platforms, so this version bundles [Inter](https://rsms.me/inter/), the closest open match. If SF Pro is installed, it's used instead.
+
 On GNOME, apps can't force themselves above other windows. If the floating box falls behind, click it, press `Alt+Space` and choose **Always on Top**.
 
 ## Develop

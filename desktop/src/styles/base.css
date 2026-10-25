@@ -12,7 +12,9 @@
 }
 
 :root {
-  --font: "Segoe UI Variable Display", "Segoe UI", "Inter", "Cantarell", "Ubuntu", system-ui, sans-serif;
+  /* SF Pro can't ship on Windows/Linux; Inter (bundled) is the closest match.
+     Real SF Pro is used if it happens to be installed. */
+  --font: "SF Pro Display", "SF Pro Text", "Inter Variable", "Inter", system-ui, sans-serif;
   --dim: rgb(255 255 255 / 0.32);
   --lit: rgb(255 255 255);
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
@@ -30,6 +32,8 @@ body {
   font-family: var(--font);
   color: #fff;
   -webkit-font-smoothing: antialiased;
+  font-optical-sizing: auto;
+  text-rendering: optimizeLegibility;
   user-select: none;
   -webkit-user-select: none;
   cursor: default;

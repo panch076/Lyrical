@@ -88,6 +88,13 @@ pub async fn fetch(track: &Snapshot) -> LyricsPayload {
             records.extend(search(&title, &artist).await.unwrap_or_default());
         }
     }
+    // Browser videos (YouTube in Chrome/Edge) report "Artist - Song" as the
+    // title and the channel name as the artist.
+    if !records.iter().any(Record::has_synced) {
+        if let Some((artist, title)) = split_video_title(&track.title) {
+            records.extend(search(&title, &artist).await.unwrap_or_default());
+        }
+    }
 
     let result = choose(&records, track.duration, &track.track_id);
     if !(network_failed && result.state == "unavailable") {
@@ -196,7 +203,17 @@ pub fn clean_title(title: &str) -> String {
     CLEAN_SUFFIX.replace_all(&result, "").trim().to_string()
 }
 
+/// "Artist - Song (Official Video)" → ("Artist", "Song").
+pub fn split_video_title(title: &str) -> Option<(String, String)> {
+    let (artist, song) = title.split_once(" - ").or_else(|| title.split_once(" – "))?;
+    let (artist, song) = (primary_artist(artist), clean_title(song));
+    (!artist.is_empty() && !song.is_empty()).then_some((artist, song))
+}
+
 pub fn primary_artist(artist: &str) -> String {
+    let artist = artist.trim();
+    let artist = artist.strip_suffix(" - Topic").unwrap_or(artist);
+    let artist = artist.strip_suffix("VEVO").unwrap_or(artist);
     let lower = artist.to_lowercase();
     let cut = [", ", " & ", " feat. ", " feat ", " ft. ", " x ", " and "]
         .iter()
@@ -241,5 +258,16 @@ mod tests {
         assert_eq!(clean_title("Song (feat. Someone)"), "Song");
         assert_eq!(primary_artist("A & B"), "A");
         assert_eq!(primary_artist("A, B feat. C"), "A");
+        assert_eq!(primary_artist("Adele - Topic"), "Adele");
+        assert_eq!(primary_artist("AdeleVEVO"), "Adele");
+    }
+
+    #[test]
+    fn splits_video_titles() {
+        assert_eq!(
+            split_video_title("Adele - Hello (Official Music Video)"),
+            Some(("Adele".into(), "Hello".into()))
+        );
+        assert_eq!(split_video_title("Hello"), None);
     }
 }

@@ -20,14 +20,20 @@ pub fn init_thread() {
     }
 }
 
+/// Polls in a row a session may fail to read before it counts as gone.
+/// Players briefly refuse property reads while switching tracks.
+const MAX_READ_FAILURES: u32 = 4;
+
 pub struct WindowsBackend {
     manager: Option<Manager>,
     session: Option<Session>,
+    last: Option<Snapshot>,
+    failures: u32,
 }
 
 impl WindowsBackend {
     pub fn new() -> Self {
-        Self { manager: None, session: None }
+        Self { manager: None, session: None, last: None, failures: 0 }
     }
 
     fn manager(&mut self) -> Option<&Manager> {
@@ -112,9 +118,23 @@ impl WindowsBackend {
 
 impl MediaBackend for WindowsBackend {
     fn snapshot(&mut self) -> Option<Snapshot> {
-        let session = self.pick_session()?;
-        let snapshot = self.read(&session).ok().flatten();
+        let Some(session) = self.pick_session() else {
+            self.last = None;
+            return None;
+        };
+        let snapshot = match self.read(&session) {
+            Ok(snapshot) => {
+                self.failures = 0;
+                snapshot
+            }
+            Err(_) if self.failures < MAX_READ_FAILURES => {
+                self.failures += 1;
+                self.last.clone()
+            }
+            Err(_) => None,
+        };
         self.session = Some(session);
+        self.last = snapshot.clone();
         snapshot
     }
 

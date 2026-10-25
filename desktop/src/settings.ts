@@ -1,3 +1,4 @@
+import "@fontsource-variable/inter";
 import { store } from "./store";
 import type { GlassStyle, Settings } from "./types";
 
