@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lyrical Settings</title>
+    <link rel="stylesheet" href="/src/styles/base.css" />
+    <link rel="stylesheet" href="/src/styles/settings.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="logo"></div>
+      <div>
+        <h1>Lyrical</h1>
+        <p>Synced lyrics for whatever's playing</p>
+      </div>
+    </header>
+
+    <section class="group">
+      <h2>Floating lyrics</h2>
+      <div class="card">
+        <div class="row">
+          <label for="glass">Glass</label>
+          <div class="segmented" id="glass" role="radiogroup"></div>
+        </div>
+        <label class="row toggle"><span>Show album art</span><input type="checkbox" id="showArtwork" /></label>
+        <label class="row toggle"><span>Show previous and next lines</span><input type="checkbox" id="surroundingLines" /></label>
+        <label class="row toggle"><span>Click-through (mouse passes through the box)</span><input type="checkbox" id="clickThrough" /></label>
+        <label class="row toggle"><span>Show floating lyrics</span><input type="checkbox" id="floatingVisible" /></label>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>Lyrics</h2>
+      <div class="card">
+        <label class="row toggle"><span>Highlight lines as they're sung (floating &amp; full screen)</span><input type="checkbox" id="sweep" /></label>
+        <div class="row">
+          <label for="fontScale">Text size</label>
+          <div class="slider"><span class="small">A</span><input type="range" id="fontScale" min="0.7" max="1.8" step="0.05" /><span class="large">A</span></div>
+        </div>
+        <div class="row">
+          <label for="syncOffset">Timing</label>
+          <div class="slider">
+            <input type="range" id="syncOffset" min="-3" max="3" step="0.05" />
+            <output id="syncValue"></output>
+            <button id="syncReset" class="pill">Reset</button>
+          </div>
+        </div>
+        <p class="hint">Positive values show lyrics earlier, negative values later.</p>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>General</h2>
+      <div class="card">
+        <label class="row toggle"><span>Open at login</span><input type="checkbox" id="autostart" /></label>
+        <div class="row actions">
+          <button id="openFullscreen" class="pill">Open Full Screen Lyrics</button>
+        </div>
+        <p class="hint" id="platformHint"></p>
+      </div>
+    </section>
+
+    <footer>Lyrics from LRCLIB · Artwork from your player or the iTunes Search API</footer>
+    <script type="module" src="/src/settings.ts"></script>
+  </body>
+</html>

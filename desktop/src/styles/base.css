@@ -1,0 +1,119 @@
+/* Registered so the lit colour can transition when a line finishes. */
+@property --lit {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgb(255 255 255);
+}
+
+@property --p {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: -10%;
+}
+
+:root {
+  --font: "Segoe UI Variable Display", "Segoe UI", "Inter", "Cantarell", "Ubuntu", system-ui, sans-serif;
+  --dim: rgb(255 255 255 / 0.32);
+  --lit: rgb(255 255 255);
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  font-family: var(--font);
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* Sung text: each word is a gradient clipped to its glyphs; --p moves the
+   boundary between the lit and unlit colour. */
+.sung .w {
+  background-image: linear-gradient(90deg, var(--lit) calc(var(--p) - 10%), var(--dim) calc(var(--p) + 10%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* Glass surfaces drawn inside the page (buttons, badges, cards). */
+.glass {
+  background: rgb(255 255 255 / 0.12);
+  border: 1px solid rgb(255 255 255 / 0.22);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    inset 0 -1px 0 rgb(255 255 255 / 0.06),
+    0 8px 24px rgb(0 0 0 / 0.18);
+  backdrop-filter: blur(24px) saturate(1.7);
+  -webkit-backdrop-filter: blur(24px) saturate(1.7);
+}
+
+.glass-button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.2s var(--ease-spring), background-color 0.2s;
+}
+
+.glass-button:hover {
+  background-color: rgb(255 255 255 / 0.2);
+}
+
+.glass-button:active {
+  transform: scale(0.92);
+}
+
+.glass-button svg {
+  width: 45%;
+  height: 45%;
+}
+
+.dots {
+  display: inline-flex;
+  gap: calc(var(--dot) * 0.55);
+  align-items: center;
+  height: 100%;
+}
+
+.dots span {
+  width: var(--dot);
+  height: var(--dot);
+  border-radius: 50%;
+  background: currentColor;
+  animation: breathe 2.6s ease-in-out infinite;
+}
+
+.dots span:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+.dots span:nth-child(3) {
+  animation-delay: 0.6s;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.45; transform: scale(0.82); }
+  50% { opacity: 0.95; transform: scale(1.04); }
+}
+
+.no-anim,
+.no-anim * {
+  transition: none !important;
+}

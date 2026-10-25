@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lyrical</title>
+    <link rel="stylesheet" href="/src/styles/base.css" />
+    <link rel="stylesheet" href="/src/styles/fullscreen.css" />
+  </head>
+  <body class="no-lyrics">
+    <div class="backdrop" id="backdrop">
+      <div class="drift">
+        <canvas id="bg-a" class="bg"></canvas>
+        <canvas id="bg-b" class="bg"></canvas>
+      </div>
+      <div class="shade"></div>
+    </div>
+
+    <main class="layout">
+      <section class="now" id="now">
+        <div class="art-frame" id="art-frame"><img id="art" class="art" alt="" /></div>
+        <div class="titles">
+          <div class="title-block">
+            <h1 id="title">Not Playing</h1>
+            <h2 id="artist"></h2>
+          </div>
+          <span id="badge" class="badge glass"></span>
+        </div>
+        <div class="progress" id="progress">
+          <div class="bar" id="bar"><div class="fill" id="fill"></div></div>
+          <div class="times"><span id="elapsed">0:00</span><span id="remaining"></span></div>
+        </div>
+        <div class="transport" id="transport">
+          <button class="glass glass-button small" id="previous" title="Previous"></button>
+          <button class="glass glass-button large" id="play" title="Play/Pause (Space)"></button>
+          <button class="glass glass-button small" id="next" title="Next"></button>
+        </div>
+        <p class="empty" id="empty"></p>
+      </section>
+
+      <section class="lyrics" id="lyrics">
+        <div class="column" id="column"></div>
+        <div class="plain" id="plain"></div>
+      </section>
+    </main>
+
+    <button class="glass glass-button close" id="close" title="Exit Full Screen (Esc)"></button>
+    <script type="module" src="/src/fullscreen.ts"></script>
+  </body>
+</html>

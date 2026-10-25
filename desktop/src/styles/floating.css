@@ -1,0 +1,260 @@
+html,
+body {
+  background: transparent;
+  overflow: hidden;
+}
+
+body {
+  --scale: 1;
+  --row: 32px;
+  --rows: 3;
+  --accent: rgb(117 33 117);
+  --dim: rgb(255 255 255 / 0.4);
+  padding: 8px;
+}
+
+/* Windows Acrylic: the window itself is the glass, so the panel fills it. */
+body.glass-acrylic {
+  padding: 0;
+}
+
+.panel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 100%;
+  padding: 16px 26px 16px 18px;
+  border-radius: 28px;
+  overflow: hidden;
+  transition: background-color 0.8s;
+}
+
+body:not(.show-art) .panel {
+  padding-left: 26px;
+}
+
+.glass-frosted .panel {
+  background: rgb(26 26 32 / 0.82);
+  border: 1px solid rgb(255 255 255 / 0.14);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 10px 30px rgb(0 0 0 / 0.25);
+}
+
+.glass-clear .panel {
+  background: rgb(20 20 26 / 0.5);
+  border: 1px solid rgb(255 255 255 / 0.2);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3);
+}
+
+.glass-tinted .panel {
+  background: color-mix(in srgb, var(--accent) 72%, rgb(10 10 14 / 0.9));
+  border: 1px solid rgb(255 255 255 / 0.18);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28), 0 10px 30px rgb(0 0 0 / 0.25);
+}
+
+.glass-acrylic .panel {
+  border-radius: 0;
+  background: rgb(0 0 0 / 0.06);
+}
+
+/* Artwork */
+.art-wrap {
+  flex: none;
+  width: 62px;
+  height: 62px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgb(0 0 0 / 0.3);
+  background: linear-gradient(135deg, #fa3d5c, #4a1a6b);
+}
+
+body:not(.show-art) .art-wrap {
+  display: none;
+}
+
+.art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.5s;
+}
+
+.art:not([src]),
+.art[src=""] {
+  opacity: 0;
+}
+
+/* Text column */
+.content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.header {
+  display: flex;
+  gap: 6px;
+  height: 16px;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.source {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.12);
+  font-size: 10px;
+}
+
+.source:empty {
+  display: none;
+}
+
+.meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The roller: rows sit at fixed offsets inside .track, and .track slides so
+   the focused row is centred. */
+.roller {
+  position: relative;
+  height: calc(var(--row) * var(--rows));
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent);
+}
+
+body.single-line .roller {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.track {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.5s var(--ease-spring);
+}
+
+.row {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: var(--row);
+  display: flex;
+  align-items: center;
+  transform-origin: left center;
+  transform: scale(0.7);
+  transition: transform 0.5s var(--ease-spring), opacity 0.5s, filter 0.5s;
+  filter: blur(0.4px);
+  --lit: rgb(255 255 255);
+}
+
+.row.focus {
+  transform: scale(1);
+  filter: none;
+}
+
+.row.past {
+  opacity: 0.45;
+  --p: 110%;
+}
+
+.row.future {
+  --p: -10%;
+}
+
+.row .text {
+  font-size: calc(22px * var(--scale));
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  line-height: 1.25;
+}
+
+.row .dots {
+  --dot: calc(8px * var(--scale));
+  color: #fff;
+}
+
+.row:not(.focus) .dots {
+  opacity: 0.5;
+}
+
+.message {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  height: calc(var(--row) * var(--rows));
+  font-size: calc(17px * var(--scale));
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.has-message .message {
+  display: flex;
+}
+
+body.has-message .roller {
+  display: none;
+}
+
+/* Hover controls */
+.controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transform: scale(0.9);
+  transform-origin: top right;
+  transition: opacity 0.2s, transform 0.3s var(--ease-spring);
+  pointer-events: none;
+}
+
+.panel:hover .controls {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.controls .glass-button {
+  width: 26px;
+  height: 26px;
+}
+
+.controls .glass-button[hidden] {
+  display: none;
+}
+
+.grip {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  opacity: 0;
+  transition: opacity 0.2s;
+  background:
+    linear-gradient(135deg, transparent 55%, rgb(255 255 255 / 0.45) 55% 62%, transparent 62% 72%, rgb(255 255 255 / 0.45) 72% 79%, transparent 79%);
+}
+
+.panel:hover .grip {
+  opacity: 1;
+}

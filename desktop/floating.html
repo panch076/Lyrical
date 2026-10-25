@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lyrical</title>
+    <link rel="stylesheet" href="/src/styles/base.css" />
+    <link rel="stylesheet" href="/src/styles/floating.css" />
+  </head>
+  <body>
+    <div id="panel" class="panel">
+      <div class="art-wrap"><img id="art" class="art" alt="" /></div>
+      <div class="content">
+        <div class="header"><span id="source" class="source"></span><span id="meta" class="meta"></span></div>
+        <div id="roller" class="roller"><div id="track" class="track"></div></div>
+        <div id="message" class="message"></div>
+      </div>
+      <div class="controls" id="controls">
+        <button class="glass glass-button" id="play" title="Play/Pause"></button>
+        <button class="glass glass-button" id="next" title="Next"></button>
+        <button class="glass glass-button" id="fullscreen" title="Full Screen Lyrics"></button>
+        <button class="glass glass-button" id="hide" title="Hide Floating Lyrics"></button>
+      </div>
+      <div class="grip" id="grip" title="Resize"></div>
+    </div>
+    <script type="module" src="/src/floating.ts"></script>
+  </body>
+</html>
