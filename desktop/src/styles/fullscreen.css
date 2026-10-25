@@ -295,11 +295,11 @@ h2 {
 }
 
 .line.past {
-  --p: 110%;
+  --x: 100000px;
 }
 
 .line.future {
-  --p: -10%;
+  --x: -100000px;
 }
 
 .line .text {

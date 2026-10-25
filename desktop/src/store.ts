@@ -83,9 +83,16 @@ class Store {
     } else if (trackChanged || initial || performance.now() > this.graceUntil) {
       const elapsed = snapshot.isPlaying ? (Date.now() - snapshot.timestampMs) / 1000 : 0;
       const position = snapshot.position + Math.max(0, elapsed);
-      const rate = snapshot.isPlaying ? 1 : 0;
-      if (trackChanged || initial || rate !== this.rate || Math.abs(this.time() - position) > 0.35) {
-        this.setAnchor(position, rate);
+      const playing = snapshot.isPlaying;
+      const drift = position - this.time();
+      if (trackChanged || initial || playing !== this.rate > 0 || Math.abs(drift) > 1.5) {
+        // Seeks, track changes and play/pause jump straight to the new spot.
+        this.setAnchor(position, playing ? 1 : 0);
+      } else if (playing) {
+        // Small disagreements are eased out by running the clock slightly fast
+        // or slow until the next update, so the sweep never visibly jumps.
+        const correction = Math.abs(drift) < 0.03 ? 0 : Math.min(Math.max(drift, -0.15), 0.15);
+        this.setAnchor(this.time(), 1 + correction);
       }
     }
 
@@ -119,7 +126,7 @@ class Store {
 
   seek(seconds: number): void {
     if (!this.nowPlaying?.canSeek) return;
-    this.setAnchor(Math.max(0, seconds), this.rate);
+    this.setAnchor(Math.max(0, seconds), this.rate > 0 ? 1 : 0);
     this.graceUntil = performance.now() + 1200;
     void this.api.invoke("media_command", { action: "seek", position: seconds });
   }

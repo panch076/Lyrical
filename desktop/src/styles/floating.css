@@ -196,11 +196,11 @@ body.single-line .roller {
 
 .row.past {
   opacity: 0.45;
-  --p: 110%;
+  --x: 100000px;
 }
 
 .row.future {
-  --p: -10%;
+  --x: -100000px;
 }
 
 .row .text {

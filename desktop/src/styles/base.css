@@ -5,10 +5,11 @@
   initial-value: rgb(255 255 255);
 }
 
-@property --p {
-  syntax: "<percentage>";
+/* Position of the lit edge inside each word, in px from its left side. */
+@property --x {
+  syntax: "<length>";
   inherits: true;
-  initial-value: -10%;
+  initial-value: -100000px;
 }
 
 :root {
@@ -44,10 +45,16 @@ button {
   color: inherit;
 }
 
-/* Sung text: each word is a gradient clipped to its glyphs; --p moves the
-   boundary between the lit and unlit colour. */
+/* Sung text: each word is a gradient clipped to its glyphs; --x moves the
+   boundary between the lit and unlit colour. The fade is a fixed width
+   (2 × --feather), the same for short and long words. */
+.sung {
+  /* Keep in sync with FEATHER_EM in lyrics.ts. */
+  --feather: 0.45em;
+}
+
 .sung .w {
-  background-image: linear-gradient(90deg, var(--lit) calc(var(--p) - 10%), var(--dim) calc(var(--p) + 10%));
+  background-image: linear-gradient(90deg, var(--lit) calc(var(--x) - var(--feather)), var(--dim) calc(var(--x) + var(--feather)));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
