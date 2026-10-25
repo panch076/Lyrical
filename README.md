@@ -13,7 +13,16 @@ A menu-bar app for macOS that shows synced lyrics for whatever is playing, style
   - Anything else (browsers, video players…) is identified by ShazamKit from system audio. Shazam also reports the offset into the song, so the lyrics stay in sync.
 - Lyrics come from [LRCLIB](https://lrclib.net). Artwork and metadata fall back to the iTunes Search API.
 
-## Build
+## Download
+
+- **macOS 14+**: [Lyrical 1.2.0](https://github.com/panch076/Lyrical/releases/tag/v1.2.0)
+- **Windows 10/11 and Linux**: [Lyrical for Windows & Linux 1.0.0](https://github.com/panch076/Lyrical/releases/tag/desktop-v1.0.0) (`.exe`, `.msi`, `.deb`, `.rpm`, `.AppImage`)
+
+## Windows & Linux
+
+[`desktop/`](desktop) contains a standalone cross-platform version built with Tauri, with the same floating lyrics, full-screen view and sing-along highlight. It detects songs from any app in the Windows media controls or any Linux player that supports MPRIS (Spotify, Chrome, Edge, Firefox, YouTube Music in a browser, and more). See [desktop/README.md](desktop/README.md) for details and build instructions. GitHub Actions builds the installers on every change.
+
+## Build (macOS)
 
     ./build.sh            # -> build/Lyrical.app
     open build/Lyrical.app
