@@ -6,7 +6,14 @@ cd "$(dirname "$0")"
 CONFIG="${CONFIG:-release}"
 APP="build/Lyrical.app"
 
-swift build -c "$CONFIG"
+# UNIVERSAL=1 builds a fat arm64 + x86_64 binary for distribution.
+if [ "${UNIVERSAL:-0}" = "1" ]; then
+    swift build -c "$CONFIG" --arch arm64 --arch x86_64
+    BINARY=".build/apple/Products/$(tr '[:lower:]' '[:upper:]' <<< "${CONFIG:0:1}")${CONFIG:1}/Lyrical"
+else
+    swift build -c "$CONFIG"
+    BINARY=".build/$CONFIG/Lyrical"
+fi
 
 if [ ! -f Resources/AppIcon.icns ]; then
     echo "Rendering app icon…"
@@ -23,7 +30,7 @@ fi
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp ".build/$CONFIG/Lyrical" "$APP/Contents/MacOS/Lyrical"
+cp "$BINARY" "$APP/Contents/MacOS/Lyrical"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
