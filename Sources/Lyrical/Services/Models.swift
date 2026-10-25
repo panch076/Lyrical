@@ -119,6 +119,16 @@ extension Array where Element == LyricLine {
         }
         return low
     }
+
+    /// How far through singing the line at `index` we are at `time` (0 = not
+    /// started, ≥1 = finished). Lines have no per-word timing, so the sweep is
+    /// paced by text length, capped by when the next line starts.
+    func sweepProgress(at index: Int, time: TimeInterval) -> Double {
+        let line = self[index]
+        let next = index + 1 < count ? self[index + 1].time : line.time + 5
+        let span = Swift.min(next - line.time, Double(line.text.count) * 0.085 + 0.9)
+        return span > 0 ? (time - line.time) / span : 1
+    }
 }
 
 enum Prefs {

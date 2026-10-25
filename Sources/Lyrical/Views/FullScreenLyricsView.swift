@@ -315,13 +315,14 @@ private struct SyncedLyricsList: View, Equatable {
                 .opacity(activeIndex == nil ? 1 : 0.3)
                 .padding(.horizontal, 18)
         } else {
-            LyricRow(line: lines[id], activeIndex: activeIndex, fontSize: fontSize, canSeek: canSeek, onSeek: onSeek)
+            LyricRow(line: lines[id], lines: lines, activeIndex: activeIndex, fontSize: fontSize, canSeek: canSeek, onSeek: onSeek)
         }
     }
 }
 
 private struct LyricRow: View {
     let line: LyricLine
+    let lines: [LyricLine]
     let activeIndex: Int?
     let fontSize: CGFloat
     let canSeek: Bool
@@ -340,10 +341,8 @@ private struct LyricRow: View {
                     .frame(height: fontSize * 1.1)
                     .opacity(isActive ? 1 : 0.25)
             } else {
-                Text(line.text)
-                    .font(.system(size: fontSize, weight: .bold))
-                    .foregroundStyle(.white.opacity(isActive ? 1 : 0.32))
-                    .fixedSize(horizontal: false, vertical: true)
+                SungLyricText(line: line, lines: lines, fontSize: fontSize,
+                              isActive: isActive, isPast: line.id < (activeIndex ?? -1))
                     .shadow(color: .white.opacity(isActive ? 0.25 : 0), radius: 12)
             }
         }
@@ -360,6 +359,50 @@ private struct LyricRow: View {
         .onHover { inside in withAnimation(.easeOut(duration: 0.15)) { hovering = inside } }
         .onTapGesture { if canSeek { onSeek(line.time) } }
         .animation(.easeInOut(duration: 0.5), value: isActive)
+    }
+}
+
+/// A full-screen lyric line that lights up as it's sung. Only the active line
+/// runs a timeline; the others render once, so the list itself stays still.
+private struct SungLyricText: View {
+    @Environment(NowPlayingModel.self) private var model
+    @AppStorage(Prefs.syncOffset) private var syncOffset = 0.0
+    @AppStorage(Prefs.karaokeSweep) private var karaokeSweep = true
+
+    let line: LyricLine
+    let lines: [LyricLine]
+    let fontSize: CGFloat
+    let isActive: Bool
+    let isPast: Bool
+
+    private static let dimOpacity = 0.32
+
+    var body: some View {
+        // One TimelineView in every state keeps the view's identity stable, so
+        // the brightness fade animates when a line becomes active or finishes.
+        TimelineView(.animation(minimumInterval: 1 / 60, paused: !(isActive && model.isPlaying))) { context in
+            let text = Text(line.text).font(.system(size: fontSize, weight: .bold))
+            Group {
+                if #available(macOS 15, *), karaokeSweep {
+                    text
+                        .foregroundStyle(.white)
+                        .textRenderer(KaraokeRenderer(
+                            progress: progress(at: context.date),
+                            litOpacity: isActive ? 1 : Self.dimOpacity,
+                            dimOpacity: Self.dimOpacity,
+                            feather: fontSize * 0.7))
+                } else {
+                    text.foregroundStyle(.white.opacity(isActive ? 1 : Self.dimOpacity))
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func progress(at date: Date) -> Double {
+        if isPast { return 1 }
+        guard isActive else { return 0 }
+        return lines.sweepProgress(at: line.id, time: model.time(at: date) + syncOffset)
     }
 }
 

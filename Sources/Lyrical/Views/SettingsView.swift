@@ -24,7 +24,7 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
                 Toggle("Show album art", isOn: $showArtwork)
                 Toggle("Show previous and next lines", isOn: $showNextLine)
-                Toggle("Highlight lines as they're sung", isOn: $karaokeSweep)
+                Toggle("Highlight lines as they're sung (floating & full screen)", isOn: $karaokeSweep)
                 LabeledContent("Text size") {
                     HStack {
                         Image(systemName: "textformat.size.smaller")

@@ -191,10 +191,7 @@ private struct LyricRoller: View {
         guard karaokeSweep else { return 1 }
         if row < focus { return 1 }
         if row > focus { return 0 }
-        let line = lines[row]
-        let next = row + 1 < lines.count ? lines[row + 1].time : line.time + 5
-        let span = min(next - line.time, Double(line.text.count) * 0.085 + 0.9)
-        return span > 0 ? (time - line.time) / span : 1
+        return lines.sweepProgress(at: row, time: time)
     }
 }
 

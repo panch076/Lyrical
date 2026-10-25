@@ -87,6 +87,57 @@ struct SweepText: View {
     }
 }
 
+/// Sweeps a highlight through wrapped text line by line: the first visual
+/// line fills left to right, then the next, so multi-line lyrics light up in
+/// reading order. Only `litOpacity` animates, so lines fade rather than
+/// un-sweep when they finish.
+@available(macOS 15, *)
+struct KaraokeRenderer: TextRenderer, Animatable {
+    var progress: Double
+    var litOpacity: Double
+    var dimOpacity: Double
+    var feather: CGFloat
+
+    var animatableData: Double {
+        get { litOpacity }
+        set { litOpacity = newValue }
+    }
+
+    func draw(layout: Text.Layout, in context: inout GraphicsContext) {
+        let lines = Array(layout)
+        let total = lines.reduce(0) { $0 + $1.typographicBounds.width }
+        var remaining = CGFloat(min(max(progress, 0), 1)) * total
+
+        for line in lines {
+            let bounds = line.typographicBounds.rect
+            var dim = context
+            dim.opacity = dimOpacity
+            dim.draw(line)
+
+            let lit = min(max(remaining, 0), bounds.width)
+            remaining -= bounds.width
+            guard lit > 0 else { continue }
+
+            var bright = context
+            bright.opacity = litOpacity
+            let solidEnd = lit / (lit + feather)
+            bright.clipToLayer { layer in
+                layer.fill(
+                    Path(bounds.insetBy(dx: 0, dy: -bounds.height * 0.3)),
+                    with: .linearGradient(
+                        Gradient(stops: [
+                            .init(color: .black, location: 0),
+                            .init(color: .black, location: solidEnd),
+                            .init(color: .clear, location: 1),
+                        ]),
+                        startPoint: CGPoint(x: bounds.minX, y: 0),
+                        endPoint: CGPoint(x: bounds.minX + lit + feather, y: 0)))
+            }
+            bright.draw(line)
+        }
+    }
+}
+
 struct SourceBadge: View {
     let source: PlaybackSource
 
