@@ -1,3 +1,6 @@
+<img width="2560" height="1440" alt="Screenshot 2026-10-24 at 9 28 30 PM" src="https://github.com/user-attachments/assets/0ec47a86-3c12-4f5f-9480-9058445591f6" />
+<img width="1053" height="240" alt="image" src="https://github.com/user-attachments/assets/9e044f9a-d9ac-4799-8b45-c2dfe5801dc3" />
+
 # Lyrical
 # slop slop slop idc— your discretion
 
