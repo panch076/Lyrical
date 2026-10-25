@@ -16,7 +16,7 @@ A menu-bar app for macOS that shows synced lyrics for whatever is playing, style
 ## Download
 
 - **macOS 14+**: [Lyrical 1.2.0](https://github.com/panch076/Lyrical/releases/tag/v1.2.0)
-- **Windows 10/11 and Linux**: [Lyrical for Windows & Linux 1.0.0](https://github.com/panch076/Lyrical/releases/tag/desktop-v1.0.0) (`.exe`, `.msi`, `.deb`, `.rpm`, `.AppImage`)
+- **Windows 10/11 and Linux**: [Lyrical for Windows & Linux 1.0.1](https://github.com/panch076/Lyrical/releases/tag/desktop-v1.0.1) (`.exe`, `.msi`, `.deb`, `.rpm`, `.AppImage`)
 
 ## Windows & Linux
 
