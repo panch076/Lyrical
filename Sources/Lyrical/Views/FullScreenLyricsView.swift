@@ -48,7 +48,7 @@ struct FullScreenLyricsView: View {
                         .frame(width: 40, height: 40)
                 }
                 .buttonStyle(.plain)
-                .glassEffect(.clear.interactive(), in: .circle)
+                .adaptiveGlass(.clear.interactive(), in: .circle)
                 .help("Exit Full Screen (esc)")
                 .padding(28)
                 .opacity(chromeVisible ? 1 : 0)
@@ -189,7 +189,7 @@ private struct TransportControls: View {
     @Environment(NowPlayingModel.self) private var model
 
     var body: some View {
-        GlassEffectContainer(spacing: 20) {
+        AdaptiveGlassContainer(spacing: 20) {
             HStack(spacing: 26) {
                 button("backward.fill", size: 20, diameter: 56) { model.previous() }
                 button(model.isPlaying ? "pause.fill" : "play.fill", size: 30, diameter: 76) { model.togglePlayPause() }
@@ -207,7 +207,7 @@ private struct TransportControls: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .glassEffect(.clear.interactive(), in: .circle)
+        .adaptiveGlass(.clear.interactive(), in: .circle)
     }
 }
 

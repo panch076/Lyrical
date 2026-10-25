@@ -4,7 +4,7 @@
 # Lyrical
 # slop slop slop idc— your discretion
 
-A menu-bar app for macOS 26 that shows synced lyrics for whatever is playing, styled with Liquid Glass.
+A menu-bar app for macOS that shows synced lyrics for whatever is playing, styled with Liquid Glass.
 
 - **Floating lyrics**: a glass panel that stays above every Space and full-screen app. Lines fill in as they're sung, with the next line shown underneath. Hover to get controls. You can make it click-through from the menu.
 - **Full-screen lyrics**: an Apple Music-style player. An animated, blurred artwork background, large artwork, title and artist, a scrubber, glass transport controls, and auto-scrolling lyrics. Click a line to jump to it. `esc` exits, `space` plays/pauses, `⌘←/→` skips tracks.
@@ -18,7 +18,9 @@ A menu-bar app for macOS 26 that shows synced lyrics for whatever is playing, st
     ./build.sh            # -> build/Lyrical.app
     open build/Lyrical.app
 
-Requires Xcode 26 and macOS 26.
+Runs on **macOS 14 Sonoma and later**. On macOS 26 Tahoe it uses Liquid Glass. On Sonoma and Sequoia it falls back to native frosted materials; the floating panel blurs the desktop behind it. Building requires Xcode 26 (for the macOS 26 SDK).
+
+    UNIVERSAL=1 ./build.sh   # Apple Silicon + Intel, for distribution
 
 ## Permissions
 

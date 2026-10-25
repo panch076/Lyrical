@@ -13,7 +13,7 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 14) {
             NowPlayingCard()
 
-            GlassEffectContainer(spacing: 10) {
+            AdaptiveGlassContainer(spacing: 10) {
                 HStack(spacing: 10) {
                     actionTile(
                         title: "Floating", symbol: "pip.fill",
@@ -100,7 +100,7 @@ struct MenuBarView: View {
             .contentShape(RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
-        .glassEffect(isOn ? .regular.tint(model.accent).interactive() : .regular.interactive(),
+        .adaptiveGlass(isOn ? .regular.tint(model.accent).interactive() : .regular.interactive(),
                      in: .rect(cornerRadius: 16, style: .continuous))
     }
 
@@ -166,7 +166,7 @@ private struct NowPlayingCard: View {
             }
         }
         .padding(12)
-        .glassEffect(.regular.tint(model.accent.opacity(0.25)), in: .rect(cornerRadius: 20, style: .continuous))
+        .adaptiveGlass(.regular.tint(model.accent.opacity(0.25)), in: .rect(cornerRadius: 20, style: .continuous))
     }
 }
 
@@ -194,6 +194,6 @@ private struct BrowserPermissionHint: View {
             }
         }
         .padding(10)
-        .glassEffect(.regular.tint(.orange.opacity(0.15)), in: .rect(cornerRadius: 12, style: .continuous))
+        .adaptiveGlass(.regular.tint(.orange.opacity(0.15)), in: .rect(cornerRadius: 12, style: .continuous))
     }
 }

@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "Lyrical",
-    platforms: [.macOS("26.0")],
+    platforms: [.macOS(.v14)],
     targets: [
         .executableTarget(
             name: "Lyrical",

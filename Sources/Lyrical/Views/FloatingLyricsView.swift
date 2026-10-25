@@ -203,7 +203,7 @@ private struct HoverControls: View {
     @Environment(WindowManager.self) private var windows
 
     var body: some View {
-        GlassEffectContainer(spacing: 6) {
+        AdaptiveGlassContainer(spacing: 6) {
             HStack(spacing: 6) {
                 if model.canControl {
                     control(model.isPlaying ? "pause.fill" : "play.fill", help: "Play/Pause") { model.togglePlayPause() }
@@ -223,7 +223,7 @@ private struct HoverControls: View {
                 .frame(width: 24, height: 24)
         }
         .buttonStyle(.plain)
-        .glassEffect(.regular.interactive(), in: .circle)
+        .adaptiveGlass(.regular.interactive(), in: .circle)
         .help(help)
     }
 }

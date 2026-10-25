@@ -95,7 +95,7 @@ struct SourceBadge: View {
             .font(.system(size: 11, weight: .semibold))
             .padding(.horizontal, 9)
             .padding(.vertical, 4)
-            .glassEffect(.regular, in: .capsule)
+            .adaptiveGlass(.regular, in: .capsule)
     }
 }
 
@@ -115,8 +115,7 @@ struct AnimatedArtworkBackground: View {
         GeometryReader { geo in
             let side = max(geo.size.width, geo.size.height) * 1.3
             ZStack {
-                MeshGradient(width: 3, height: 3, points: Self.meshPoints,
-                             colors: palette.count == 9 ? palette : ArtworkPalette.fallback)
+                PaletteGradient(palette: palette.count == 9 ? palette : ArtworkPalette.fallback)
                     .blur(radius: 40, opaque: true)
 
                 if let image {
@@ -152,21 +151,41 @@ struct AnimatedArtworkBackground: View {
         }
     }
 
+}
+
+/// The artwork's 3×3 colour grid as a mesh gradient (macOS 15+), or a
+/// diagonal gradient through the same colours on Sonoma.
+private struct PaletteGradient: View {
+    let palette: [Color]
+
     private static let meshPoints: [SIMD2<Float>] = [
         [0, 0], [0.5, 0], [1, 0],
         [0, 0.5], [0.5, 0.5], [1, 0.5],
         [0, 1], [0.5, 1], [1, 1],
     ]
+
+    var body: some View {
+        if #available(macOS 15, *) {
+            MeshGradient(width: 3, height: 3, points: Self.meshPoints, colors: palette)
+        } else {
+            LinearGradient(colors: [palette[0], palette[4], palette[8]],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
+    }
 }
 
 extension View {
     /// Applies the user's chosen Liquid Glass variant.
     @ViewBuilder
     func lyricalGlass(_ style: PanelGlass, accent: Color, in shape: some Shape) -> some View {
-        switch style {
-        case .regular: glassEffect(.regular, in: shape)
-        case .clear: glassEffect(.clear, in: shape)
-        case .tinted: glassEffect(.regular.tint(accent.opacity(0.55)), in: shape)
+        if #available(macOS 26, *) {
+            switch style {
+            case .regular: glassEffect(.regular, in: shape)
+            case .clear: glassEffect(.clear, in: shape)
+            case .tinted: glassEffect(.regular.tint(accent.opacity(0.55)), in: shape)
+            }
+        } else {
+            modifier(DesktopMaterial(style: style, accent: accent, shape: shape))
         }
     }
 }
