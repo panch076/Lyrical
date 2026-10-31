@@ -71,6 +71,9 @@ struct FullScreenLyricsView: View {
         case .unavailable:
             Text("Lyrics aren't available for this song")
                 .font(.title3.weight(.semibold)).foregroundStyle(.white.opacity(0.6))
+        case .serviceDown:
+            Text("Can't reach the lyrics service. Retrying…")
+                .font(.title3.weight(.semibold)).foregroundStyle(.white.opacity(0.6))
         case .idle:
             Text("Play a song in any app to see lyrics")
                 .font(.title3.weight(.semibold)).foregroundStyle(.white.opacity(0.6))

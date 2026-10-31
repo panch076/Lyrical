@@ -60,6 +60,7 @@ enum LyricsState: Equatable, Sendable {
     case plain([String])
     case instrumental
     case unavailable
+    case serviceDown
 
     var syncedLines: [LyricLine]? {
         if case .synced(let lines) = self { return lines }
