@@ -57,8 +57,13 @@ function applyPlayback(): void {
   playButton.innerHTML = store.isPlaying ? icons.pause : icons.play;
 }
 
+let artworkToken = 0;
+
 async function applyArtwork(): Promise<void> {
-  const url = store.artwork?.trackId === store.nowPlaying?.trackId ? store.artwork?.dataUrl : null;
+  const url = store.artworkUrl;
+  // The previous artwork stays up until the new track's arrives.
+  if (url === undefined || url === art.getAttribute("src")) return;
+  const token = ++artworkToken;
   if (!url) {
     art.removeAttribute("src");
     return;
@@ -66,6 +71,7 @@ async function applyArtwork(): Promise<void> {
   art.src = url;
   try {
     const palette = extractPalette(await loadImage(url));
+    if (token !== artworkToken) return;
     document.body.style.setProperty("--accent", rgb(accent(palette)));
   } catch {
     /* keep previous accent */

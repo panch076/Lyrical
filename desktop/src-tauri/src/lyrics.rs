@@ -56,7 +56,19 @@ static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
 
 static CACHE: LazyLock<Mutex<HashMap<String, LyricsPayload>>> = LazyLock::new(Default::default);
 
-pub async fn fetch(track: &Snapshot) -> LyricsPayload {
+const API: &str = "https://lrclib.net/api";
+
+/// Seconds to wait before each retry. LRCLIB serves songs it has cached but
+/// answers others with "503 ServerOverloaded" when busy, sometimes for well
+/// over a minute, so less popular songs need patience.
+const RETRY_DELAYS: [u64; 8] = [2, 4, 8, 15, 30, 30, 30, 30];
+
+/// `still_wanted` stops the retries once the track is no longer playing.
+pub async fn fetch(track: &Snapshot, still_wanted: impl Fn() -> bool) -> LyricsPayload {
+    fetch_from(API, track, still_wanted).await
+}
+
+async fn fetch_from(api: &str, track: &Snapshot, still_wanted: impl Fn() -> bool) -> LyricsPayload {
     if track.track_id == DEMO_TRACK_ID {
         return demo(track);
     }
@@ -65,70 +77,91 @@ pub async fn fetch(track: &Snapshot) -> LyricsPayload {
         return LyricsPayload { track_id: track.track_id.clone(), ..cached.clone() };
     }
 
-    let mut network_failed = false;
-    let mut records = Vec::new();
-
-    if let (Some(duration), false) = (track.duration, track.album.is_empty()) {
-        match get(&track.title, &track.artist, &track.album, duration).await {
-            Ok(Some(record)) => records.push(record),
-            Ok(None) => {}
-            Err(_) => network_failed = true,
+    let (mut records, mut failed) = lookup(api, track).await;
+    for delay in RETRY_DELAYS {
+        if !failed || records.iter().any(Record::has_synced) || !still_wanted() {
+            break;
         }
-    }
-    if !records.iter().any(Record::has_synced) {
-        match search(&track.title, &track.artist).await {
-            Ok(found) => records.extend(found),
-            Err(_) => network_failed = true,
+        tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
+        if !still_wanted() {
+            break;
         }
-    }
-    if !records.iter().any(Record::has_synced) {
-        let title = clean_title(&track.title);
-        let artist = primary_artist(&track.artist);
-        if title != track.title || artist != track.artist {
-            records.extend(search(&title, &artist).await.unwrap_or_default());
-        }
-    }
-    // Browser videos (YouTube in Chrome/Edge) report "Artist - Song" as the
-    // title and the channel name as the artist.
-    if !records.iter().any(Record::has_synced) {
-        if let Some((artist, title)) = split_video_title(&track.title) {
-            records.extend(search(&title, &artist).await.unwrap_or_default());
-        }
+        (records, failed) = lookup(api, track).await;
     }
 
     let result = choose(&records, track.duration, &track.track_id);
-    if !(network_failed && result.state == "unavailable") {
+    // A failed lookup may have missed better lyrics, so try again next time.
+    if !failed || records.iter().any(Record::has_synced) {
         CACHE.lock().unwrap().insert(key, result.clone());
     }
     result
 }
 
-async fn get(title: &str, artist: &str, album: &str, duration: f64) -> reqwest::Result<Option<Record>> {
-    let response = CLIENT
-        .get("https://lrclib.net/api/get")
-        .query(&[
-            ("track_name", title),
-            ("artist_name", artist),
-            ("album_name", album),
-            ("duration", &duration.round().to_string()),
-        ])
-        .send()
-        .await?;
-    if !response.status().is_success() {
+/// Runs each query until one has synced lyrics. The flag is true if any
+/// request failed, meaning the records may be incomplete.
+async fn lookup(api: &str, track: &Snapshot) -> (Vec<Record>, bool) {
+    let mut failed = false;
+    let mut records = Vec::new();
+    for (title, artist) in queries(track) {
+        // LRCLIB accepts an empty album, which is all some players report.
+        if let Some(duration) = track.duration {
+            match get(api, &title, &artist, &track.album, duration).await {
+                Ok(Some(record)) => records.push(record),
+                Ok(None) => {}
+                Err(_) => failed = true,
+            }
+        }
+        if !records.iter().any(Record::has_synced) {
+            match search(api, &title, &artist).await {
+                Ok(found) => records.extend(found),
+                Err(_) => failed = true,
+            }
+        }
+        if records.iter().any(Record::has_synced) {
+            break;
+        }
+    }
+    (records, failed)
+}
+
+/// The (title, artist) pairs to try for a track, best first.
+fn queries(track: &Snapshot) -> Vec<(String, String)> {
+    let mut queries = vec![(track.title.clone(), track.artist.clone())];
+    let cleaned = (clean_title(&track.title), primary_artist(&track.artist));
+    if !queries.contains(&cleaned) {
+        queries.push(cleaned);
+    }
+    // Browser videos (YouTube in Chrome/Edge) report "Artist - Song" as the
+    // title and the channel name as the artist.
+    if let Some((artist, title)) = split_video_title(&track.title) {
+        if !queries.contains(&(title.clone(), artist.clone())) {
+            queries.push((title, artist));
+        }
+    }
+    queries
+}
+
+/// None means LRCLIB gave a definite answer that it has nothing. Errors, which
+/// include it being overloaded or rate limiting, are worth retrying.
+async fn request(url: String, query: &[(&str, &str)]) -> reqwest::Result<Option<reqwest::Response>> {
+    let response = CLIENT.get(url).query(query).send().await?;
+    let status = response.status();
+    if status.is_client_error() && status != reqwest::StatusCode::TOO_MANY_REQUESTS {
         return Ok(None);
     }
+    response.error_for_status().map(Some)
+}
+
+async fn get(api: &str, title: &str, artist: &str, album: &str, duration: f64) -> reqwest::Result<Option<Record>> {
+    let duration = duration.round().to_string();
+    let query = [("track_name", title), ("artist_name", artist), ("album_name", album), ("duration", &duration)];
+    let Some(response) = request(format!("{api}/get"), &query).await? else { return Ok(None) };
     Ok(response.json().await.ok())
 }
 
-async fn search(title: &str, artist: &str) -> reqwest::Result<Vec<Record>> {
-    let response = CLIENT
-        .get("https://lrclib.net/api/search")
-        .query(&[("track_name", title), ("artist_name", artist)])
-        .send()
-        .await?;
-    if !response.status().is_success() {
-        return Ok(Vec::new());
-    }
+async fn search(api: &str, title: &str, artist: &str) -> reqwest::Result<Vec<Record>> {
+    let query = [("track_name", title), ("artist_name", artist)];
+    let Some(response) = request(format!("{api}/search"), &query).await? else { return Ok(Vec::new()) };
     Ok(response.json().await.unwrap_or_default())
 }
 
@@ -235,6 +268,10 @@ fn demo(track: &Snapshot) -> LyricsPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::TcpListener;
+    use std::sync::Arc;
+    use tauri::async_runtime::block_on;
 
     #[test]
     fn parses_lrc_and_collapses_gaps() {
@@ -269,5 +306,123 @@ mod tests {
             Some(("Adele".into(), "Hello".into()))
         );
         assert_eq!(split_video_title("Hello"), None);
+    }
+
+    const SYNCED: &str = r#"{"duration":100,"syncedLyrics":"[00:01.00]hello","plainLyrics":"hello"}"#;
+
+    fn track(title: &str, artist: &str, duration: Option<f64>) -> Snapshot {
+        Snapshot {
+            track_id: format!("test|{title}|{artist}"),
+            title: title.into(),
+            artist: artist.into(),
+            duration,
+            ..Default::default()
+        }
+    }
+
+    /// Serves canned responses, one per request, then repeats the last. Returns
+    /// the base URL and a log of the request lines it received.
+    fn mock_server(responses: Vec<(u16, String)>) -> (String, Arc<Mutex<Vec<String>>>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let log = Arc::new(Mutex::new(Vec::new()));
+        let requests = log.clone();
+        std::thread::spawn(move || {
+            for (index, stream) in listener.incoming().enumerate() {
+                let mut stream = stream.unwrap();
+                let mut line = String::new();
+                BufReader::new(&stream).read_line(&mut line).unwrap();
+                requests.lock().unwrap().push(line);
+                let (status, body) = &responses[index.min(responses.len() - 1)];
+                let reply = format!(
+                    "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                stream.write_all(reply.as_bytes()).unwrap();
+            }
+        });
+        (base, log)
+    }
+
+    fn busy() -> (u16, String) {
+        (503, r#"{"name":"ServerOverloaded","statusCode":503}"#.into())
+    }
+
+    #[test]
+    fn retries_until_an_overloaded_server_answers() {
+        // Both requests of the first attempt fail; the retry's first succeeds.
+        let (base, log) = mock_server(vec![busy(), busy(), (200, SYNCED.into())]);
+        let song = track("Retry Song", "Artist", Some(100.0));
+        let payload = block_on(fetch_from(&base, &song, || true));
+        assert_eq!(payload.state, "synced");
+        assert_eq!(log.lock().unwrap().len(), 3);
+
+        // The result is cached now, so this makes no requests.
+        let again = block_on(fetch_from(&base, &song, || true));
+        assert_eq!(again.state, "synced");
+        assert_eq!(log.lock().unwrap().len(), 3);
+    }
+
+    #[test]
+    fn stops_retrying_once_the_track_is_gone_and_caches_nothing() {
+        let (base, log) = mock_server(vec![busy()]);
+        let song = track("Skipped Song", "Artist", Some(100.0));
+        let payload = block_on(fetch_from(&base, &song, || false));
+        assert_eq!(payload.state, "unavailable");
+        assert_eq!(log.lock().unwrap().len(), 2);
+        assert!(!CACHE.lock().unwrap().contains_key("artist|skipped song"));
+    }
+
+    #[test]
+    fn a_definite_not_found_is_not_retried() {
+        let (base, log) = mock_server(vec![(404, "{}".into()), (200, "[]".into())]);
+        let song = track("Missing Song", "Artist", Some(100.0));
+        let payload = block_on(fetch_from(&base, &song, || true));
+        assert_eq!(payload.state, "unavailable");
+        assert_eq!(log.lock().unwrap().len(), 2);
+        assert!(CACHE.lock().unwrap().contains_key("artist|missing song"));
+    }
+
+    #[test]
+    fn exact_lookup_runs_without_an_album() {
+        let (base, log) = mock_server(vec![(200, SYNCED.into())]);
+        let song = track("No Album Song", "Artist", Some(100.0));
+        assert_eq!(block_on(fetch_from(&base, &song, || true)).state, "synced");
+        let log = log.lock().unwrap();
+        assert_eq!(log.len(), 1);
+        assert!(log[0].starts_with("GET /get?"), "{}", log[0]);
+        assert!(log[0].contains("album_name=&"), "{}", log[0]);
+    }
+
+    #[test]
+    fn queries_skip_duplicates() {
+        assert_eq!(queries(&track("Song", "Artist", None)).len(), 1);
+        assert_eq!(
+            queries(&track("Song (Live)", "A & B", None)),
+            [("Song (Live)".to_string(), "A & B".to_string()), ("Song".to_string(), "A".to_string())]
+        );
+    }
+
+    /// Hits the real service: `cargo test --lib live_ -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn live_lesser_known_songs_resolve() {
+        let songs = [
+            ("Figaro", "Madvillain", 145.0),
+            ("Rhymes Like Dimes", "MF DOOM", 259.0),
+            ("Curls", "MF DOOM", 95.0),
+            ("Hoe Cakes", "MF DOOM", 174.0),
+            ("Whoa", "Earl Sweatshirt", 157.0),
+            ("Burgundy", "Earl Sweatshirt", 133.0),
+            ("Fire Escape", "Saba", 215.0),
+            ("Rainbow Six", "JPEGMAFIA", 121.0),
+            ("Thug Tears", "JPEGMAFIA", 214.0),
+            ("Rock and Roll Night Club", "Mac DeMarco", 187.0),
+        ];
+        for (title, artist, duration) in songs {
+            let start = std::time::Instant::now();
+            let payload = block_on(fetch(&track(title, artist, Some(duration)), || true));
+            println!("{title:28} {artist:18} {:12} {} lines {:>5.1}s", payload.state, payload.lines.len(), start.elapsed().as_secs_f64());
+        }
     }
 }

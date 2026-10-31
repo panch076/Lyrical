@@ -73,6 +73,12 @@ class Store {
     return this.rate > 0;
   }
 
+  /** The current track's artwork: null if it has none, undefined while it's still being resolved. */
+  get artworkUrl(): string | null | undefined {
+    if (!this.nowPlaying) return null;
+    return this.artwork?.trackId === this.nowPlaying.trackId ? this.artwork.dataUrl : undefined;
+  }
+
   private applySnapshot(snapshot: Snapshot | null, initial = false): void {
     const trackChanged = snapshot?.trackId !== this.nowPlaying?.trackId;
     const wasPlaying = this.nowPlaying?.isPlaying;

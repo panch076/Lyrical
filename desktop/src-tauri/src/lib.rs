@@ -8,6 +8,7 @@ use media::{Command, Snapshot};
 use serde::Serialize;
 use settings::Settings;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
@@ -29,6 +30,8 @@ struct ArtworkPayload {
 struct Shared {
     now: Option<Snapshot>,
     artwork: Option<ArtworkPayload>,
+    /// Bumped by each artwork lookup, so a slow one can't overwrite a newer result.
+    artwork_generation: u64,
     lyrics: Option<LyricsPayload>,
 }
 
@@ -54,6 +57,7 @@ struct AppState {
     settings: Mutex<Settings>,
     settings_path: PathBuf,
     tray: Mutex<Option<TrayItems>>,
+    fullscreen_opening: AtomicBool,
 }
 
 fn platform() -> &'static str {
@@ -270,6 +274,19 @@ fn round_corners(window: &WebviewWindow) {
 }
 
 fn open_fullscreen(app: &AppHandle) {
+    // A double-click runs this twice at once. Neither call can see the other's
+    // window until it's built, and the extra one would be a full-screen window
+    // nothing can close. A flag rather than a lock, because building a window
+    // needs the main thread, which this can also be called on.
+    let state = app.state::<AppState>();
+    if state.fullscreen_opening.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    show_or_build_fullscreen(app);
+    state.fullscreen_opening.store(false, Ordering::SeqCst);
+}
+
+fn show_or_build_fullscreen(app: &AppHandle) {
     if let Some(window) = app.get_webview_window(FULLSCREEN) {
         let _ = window.show();
         let _ = window.set_focus();
@@ -389,6 +406,7 @@ fn spawn_poller(app: AppHandle, shared: Arc<Mutex<Shared>>, commands: mpsc::Rece
         media::init_thread();
         let mut backend = media::backend();
         let mut last_id: Option<String> = None;
+        let mut art_watcher = artwork::Watcher::default();
         loop {
             match commands.recv_timeout(Duration::from_millis(500)) {
                 Ok(command) => {
@@ -405,16 +423,46 @@ fn spawn_poller(app: AppHandle, shared: Arc<Mutex<Shared>>, commands: mpsc::Rece
             // Record the new track before starting its lookups: they check it to
             // drop stale results, and a cache hit can finish before we'd get here.
             shared.lock().unwrap().now = snapshot.clone();
+            // The windows ignore lyrics and artwork for a track they haven't heard of.
+            let _ = app.emit("now-playing", &snapshot);
             if id != last_id {
                 last_id = id.clone();
-                on_track_change(&app, &shared, snapshot.clone(), backend.artwork());
+                art_watcher.track_changed();
+                on_track_change(&app, &shared, snapshot.clone());
             }
-            let _ = app.emit("now-playing", &snapshot);
+            if let Some(track) = &snapshot {
+                if art_watcher.due() {
+                    if let artwork::Update::Resolve(art) = art_watcher.update(backend.artwork()) {
+                        publish_artwork(&app, &shared, track, art);
+                    }
+                }
+            }
         }
     });
 }
 
-fn on_track_change(app: &AppHandle, shared: &Arc<Mutex<Shared>>, snapshot: Option<Snapshot>, art: Option<media::Artwork>) {
+fn publish_artwork(app: &AppHandle, shared: &Arc<Mutex<Shared>>, track: &Snapshot, art: Option<media::Artwork>) {
+    let generation = {
+        let mut state = shared.lock().unwrap();
+        state.artwork_generation += 1;
+        state.artwork_generation
+    };
+    let (app, shared, track) = (app.clone(), shared.clone(), track.clone());
+    tauri::async_runtime::spawn(async move {
+        let data_url = artwork::resolve(art, &track.title, &track.artist).await;
+        let payload = ArtworkPayload { track_id: track.track_id, data_url };
+        {
+            let mut state = shared.lock().unwrap();
+            if state.artwork_generation != generation {
+                return;
+            }
+            state.artwork = Some(payload.clone());
+        }
+        let _ = app.emit("artwork", &payload);
+    });
+}
+
+fn on_track_change(app: &AppHandle, shared: &Arc<Mutex<Shared>>, snapshot: Option<Snapshot>) {
     let label = snapshot
         .as_ref()
         .map(|s| if s.artist.is_empty() { s.title.clone() } else { format!("{} — {}", s.title, s.artist) })
@@ -422,6 +470,9 @@ fn on_track_change(app: &AppHandle, shared: &Arc<Mutex<Shared>>, snapshot: Optio
     if let Some(items) = app.state::<AppState>().tray.lock().unwrap().as_ref() {
         let _ = items.now_playing.set_text(truncate(&label, 48));
     }
+
+    // Any lookup still running is for the previous track.
+    shared.lock().unwrap().artwork_generation += 1;
 
     let Some(track) = snapshot else {
         let mut state = shared.lock().unwrap();
@@ -434,9 +485,7 @@ fn on_track_change(app: &AppHandle, shared: &Arc<Mutex<Shared>>, snapshot: Optio
 
     {
         let mut state = shared.lock().unwrap();
-        state.artwork = Some(ArtworkPayload { track_id: track.track_id.clone(), data_url: None });
         state.lyrics = Some(LyricsPayload::loading(&track.track_id));
-        let _ = app.emit("artwork", &state.artwork);
         let _ = app.emit("lyrics", &state.lyrics);
     }
 
@@ -444,20 +493,9 @@ fn on_track_change(app: &AppHandle, shared: &Arc<Mutex<Shared>>, snapshot: Optio
         shared.lock().unwrap().now.as_ref().map(|n| n.track_id.as_str()) == Some(id)
     };
 
-    let (app_art, shared_art, track_art) = (app.clone(), shared.clone(), track.clone());
-    tauri::async_runtime::spawn(async move {
-        let data_url = artwork::resolve(art, &track_art.title, &track_art.artist).await;
-        if !is_current(&shared_art, &track_art.track_id) {
-            return;
-        }
-        let payload = ArtworkPayload { track_id: track_art.track_id.clone(), data_url };
-        shared_art.lock().unwrap().artwork = Some(payload.clone());
-        let _ = app_art.emit("artwork", &payload);
-    });
-
     let (app_lyrics, shared_lyrics) = (app.clone(), shared.clone());
     tauri::async_runtime::spawn(async move {
-        let payload = lyrics::fetch(&track).await;
+        let payload = lyrics::fetch(&track, || is_current(&shared_lyrics, &track.track_id)).await;
         if !is_current(&shared_lyrics, &track.track_id) {
             return;
         }
@@ -514,6 +552,7 @@ pub fn run() {
                 settings: Mutex::new(settings.clone()),
                 settings_path,
                 tray: Mutex::new(None),
+                fullscreen_opening: AtomicBool::new(false),
             });
 
             let handle = app.handle().clone();

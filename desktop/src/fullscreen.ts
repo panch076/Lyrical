@@ -73,10 +73,16 @@ function paintBackground(image: HTMLImageElement | null, palette: RGB[]): void {
 let firstPaint = true;
 
 let artworkToken = 0;
+/** What the art and background currently show; undefined before the first paint. */
+let shownArtwork: string | null | undefined;
 
 async function applyArtwork(): Promise<void> {
+  // The previous artwork stays up until the new track's arrives.
+  if (store.artworkUrl === undefined && shownArtwork !== undefined) return;
+  const url = store.artworkUrl ?? null;
+  if (url === shownArtwork) return;
+  shownArtwork = url;
   const token = ++artworkToken;
-  const url = store.artwork?.trackId === store.nowPlaying?.trackId ? store.artwork?.dataUrl : null;
   if (!url) {
     art.removeAttribute("src");
     paintBackground(null, FALLBACK_PALETTE);
