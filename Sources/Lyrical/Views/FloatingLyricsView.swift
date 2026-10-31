@@ -92,6 +92,8 @@ private struct FloatingLyricsContent: View {
                     InstrumentalDots(size: 9 * fontScale, color: .primary)
                 case .unavailable:
                     message("No lyrics found for this song", symbol: "quote.bubble")
+                case .serviceDown:
+                    message("Can't reach the lyrics service. Retrying…", symbol: "wifi.exclamationmark")
                 case .idle:
                     message("Play something to see lyrics", symbol: "music.note")
                 }

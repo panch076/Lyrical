@@ -11,7 +11,7 @@ A menu-bar app for macOS that shows synced lyrics for whatever is playing, style
 - **Song detection**:
   - Apple Music and Spotify are read directly, which gives exact position and lets the app control playback.
   - Anything else (browsers, video players…) is identified by ShazamKit from system audio. Shazam also reports the offset into the song, so the lyrics stay in sync.
-- Lyrics come from [LRCLIB](https://lrclib.net). Artwork and metadata fall back to the iTunes Search API.
+- Lyrics come from [LRCLIB](https://lrclib.net). On macOS, songs it can't provide synced lyrics for fall back to NetEase Cloud Music, which receives the title and artist. Artwork and metadata fall back to the iTunes Search API.
 
 ## Download
 

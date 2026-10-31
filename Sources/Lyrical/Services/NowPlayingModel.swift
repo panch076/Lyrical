@@ -166,9 +166,15 @@ final class NowPlayingModel {
                     self.shazamMatch = .init(track: enriched, offset: match.offset, matchedAt: match.matchedAt)
                 }
             }
-            let state = await self.lyricsService.lyrics(for: resolved)
-            guard !Task.isCancelled, self.track?.id == id else { return }
-            withAnimation(.smooth) { self.lyrics = state }
+            while true {
+                let state = await self.lyricsService.lyrics(for: resolved)
+                guard !Task.isCancelled, self.track?.id == id else { return }
+                if state != self.lyrics { withAnimation(.smooth) { self.lyrics = state } }
+                guard state == .serviceDown else { return }
+                // Keep trying so lyrics appear mid-song once the service recovers.
+                try? await Task.sleep(for: .seconds(30))
+                guard !Task.isCancelled else { return }
+            }
         }
         artworkTask = Task { [weak self] in
             guard let self else { return }
